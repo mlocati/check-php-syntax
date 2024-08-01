@@ -1,0 +1,99 @@
+name: Build
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/build.yml"
+      - "src/**"
+      - "package-lock.json"
+      - "package.json"
+  push:
+    branches:
+      - main
+    tags-ignore:
+      - "**"
+    paths:
+      - ".github/workflows/build.yml"
+      - "src/**"
+      - "package-lock.json"
+      - "package.json"
+
+jobs:
+  build:
+    name: Build action
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Install NPM packages
+        run: npm ci
+      -
+        name: Build JS (development)
+        run: npm run-script dev
+      -
+        name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '5.3'
+          extensions: opcache
+          coverage: none
+          tools: none
+      -
+        name: Test (should fail)
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test
+      -
+        name: Test (should fail)
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test
+          include: |
+            broken-without-extension
+          exclude: |
+            broken.php
+      -
+        name: Test (should pass)
+        uses: ./
+        with:
+          directory: test
+          exclude: |
+            broken.php
+      -
+        name: Build JS
+        run: npm run-script prod
+      -
+        name: Copy assets
+        run: cp src/checker.php dist/
+      -
+        name: Check changes
+        if: github.event_name == 'push'
+        id: changes-check
+        run: |
+          GIT_OUTPUT="$(git status --porcelain ./dist)"
+          if [ -n "$GIT_OUTPUT" ]; then
+            printf 'Changes detected:\n%s\n' "$GIT_OUTPUT"
+            CHANGES=y
+          else
+            echo 'No changes detected'
+            CHANGES=n
+          fi
+          echo "detected=$CHANGES" >>"$GITHUB_OUTPUT"
+      -
+        name: Commit changes
+        if: github.event_name == 'push' && steps.changes-check.outputs.detected == 'y' 
+        run: |
+          git config user.name 'GitHub Action bot'
+          git config user.email 'michele@locati.it'
+          git add --all dist
+          git commit -m 'Automatic build'
+          git push

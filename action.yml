@@ -1,0 +1,19 @@
+name: "Check PHP Syntax"
+author: "Michele Locati"
+description: "Check if a directory contains PHP files with valid syntax"
+inputs:
+  directory:
+    description: "The directory to be checked (defaults to the current directory)"
+    required: false
+    default: ""
+  include:
+    description: "A list of files (relative to the root directory) to be included (useful for PHP file names not ending with the .php extension)"
+    required: false
+    default: ""
+  exclude:
+    description: "A list of directories and files (relative to the root directory) to be skipped"
+    required: false
+    default: ""
+runs:
+  using: "node20"
+  main: "dist/index.js"
