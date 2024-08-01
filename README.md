@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
       -
         name: Check syntax
-        uses: mlocati/check-php-syntax@main
+        uses: mlocati/check-php-syntax@v1
         with:
           directory: .
           include: |
