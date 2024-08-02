@@ -232,7 +232,10 @@ foreach ($argv as $argvIndex => $argvValue) {
     }
 }
 
-printf("Checking files with PHP %s (please be sure it's the minimum supported version)... ", PHP_VERSION);
+printf(
+    "Checking files with PHP %s.%s.%s (please be sure it's the minimum supported version)... ",
+    PHP_MAJOR_VERSION, PHP_MINOR_VERSION, PHP_RELEASE_VERSION
+);
 $result = $checker->check();
 echo "files checked: {$result->numFilesChecked} (skipped: {$result->numFilesSkipped}).\n";
 if ($result->errors === array()) {
