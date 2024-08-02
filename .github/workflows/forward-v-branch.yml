@@ -94,7 +94,7 @@ jobs:
             printf "The branch already contains version %s, aborting\n" "$VERSION"
           else
             GREATER_VERSION="$(printf '%s\n%s' "$GREATER_OLD_VERSION" "$VERSION" | sort -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
-            if [ "$GREATER_VERSION" = "VERSION" ]; then
+            if [ "$GREATER_VERSION" = "$VERSION" ]; then
               printf "The latest version in the branch (%s) is older than the new one (%s)\n" "$GREATER_OLD_VERSION" "$VERSION"
               echo "ok=1" >> "$GITHUB_OUTPUT"
             else
