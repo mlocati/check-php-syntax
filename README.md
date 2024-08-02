@@ -41,6 +41,7 @@ jobs:
         name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
+          # This is the minimum PHP version supported by your project
           php-version: '7.2'
           extensions: opcache
           coverage: none
@@ -60,6 +61,29 @@ jobs:
             tests/shim1
             tests/shim2
 ```
+
+### Sample Output
+
+If someone submits a pull request containing this code:
+
+```php
+<?php
+
+class Foo
+{
+    public int $bar;
+}
+```
+
+Since it's invalid for PHP 7.2 (property types require PHP 7.4+), the Action will fail, and it will output the following message:
+
+```
+ERRORS FOUND!
+Error #1) syntax error, unexpected 'int' (T_STRING), expecting function (T_FUNCTION) or const (T_CONST)
+File: filename.php
+Line: 5
+```
+
 
 ## Options
 
