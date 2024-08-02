@@ -1,0 +1,115 @@
+name: Forward Version Branch
+
+on:
+  create:
+    tags:
+      - "*"
+
+jobs:
+  forward-v-branch:
+    name: Forward Version Branch
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Determine version branch name
+        id: check-tag
+        if: (github.event_name == 'create' && github.event.ref_type == 'tag')
+        env:
+          TAG: ${{ github.event.ref }}
+        run: |
+          case "$TAG" in
+            v.*)
+              VERSION="${TAG#v.}"
+              ;;
+            v*)
+              VERSION="${TAG#v}"
+              ;;
+            *)
+              VERSION="$TAG"
+          esac
+          BRANCH="$(printf '%s' "$VERSION" | sed -E 's/^([0-9]+)\.[0-9]+\.[0-9]+$/v\1/')"
+          if [ "$BRANCH" = "$VERSION" ]; then
+            printf '"%s" is not a version-like tag\n' "$TAG"
+          else
+            printf 'Tag "%s" resolves to branch "%s"\n' "$TAG" "$BRANCH"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          fi
+      -
+        name: Checkout ${{ github.event.master_branch }}
+        if: steps.check-tag.outputs.branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.master_branch }}
+          fetch-depth: 0
+      -
+        name: Switch to version branch
+        if: steps.check-tag.outputs.branch
+        id: set-branch
+        env:
+          BRANCH: ${{ steps.check-tag.outputs.branch }}
+        run: |
+          if git show-ref --quiet "remotes/origin/$BRANCH"; then
+            printf 'Switching to existing branch %s\n' "$BRANCH"
+            git checkout -b "$BRANCH" "origin/$BRANCH"
+          else
+            printf 'Creating new branch %s\n' "$BRANCH"
+            git checkout -b "$BRANCH"
+            echo "is-new=1" >> "$GITHUB_OUTPUT"
+          fi
+      -
+        name: Check if tag is the latest one
+        id: check-version
+        if: steps.check-tag.outputs.branch && !steps.set-branch.outputs.is-new
+        env:
+          VERSION: ${{ steps.check-tag.outputs.version }}
+        run: |
+          GREATER_OLD_VERSION=""
+          for OLD_TAG in $(git tag -l --merged); do
+            case "$OLD_TAG" in
+              v.*)
+                OLD_VERSION="${OLD_TAG#v.}"
+                ;;
+              v*)
+                OLD_VERSION="${OLD_TAG#v}"
+                ;;
+              *)
+                OLD_VERSION="$OLD_TAG"
+            esac
+            if [ -z "$(printf '%s' "$OLD_VERSION" | sed -E 's/^([0-9]+)\.[0-9]+\.[0-9]+$//')" ]; then
+              if [ -z "$GREATER_OLD_VERSION" ]; then
+                GREATER_OLD_VERSION="$OLD_VERSION"
+              else
+                GREATER_VERSION="$(printf '%s\n%s' "$GREATER_OLD_VERSION" "$OLD_VERSION" | sort -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
+                if [ "$GREATER_VERSION" = "$GREATER_OLD_VERSION" ]; then
+                  GREATER_OLD_VERSION="$OLD_VERSION"
+                fi
+              fi
+            fi
+          done
+          if [ -z "$GREATER_OLD_VERSION" ]; then
+            printf "There's no other version in the branch\n"
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          elif [ "$GREATER_OLD_VERSION" = "$VERSION" ]; then
+            printf "The branch already contains version %s, aborting\n" "$VERSION"
+          else
+            GREATER_VERSION="$(printf '%s\n%s' "$GREATER_OLD_VERSION" "$VERSION" | sort -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
+            if [ "$GREATER_VERSION" = "VERSION" ]; then
+              printf "The latest version in the branch (%s) is older than the new one (%s)\n" "$GREATER_OLD_VERSION" "$VERSION"
+              echo "ok=1" >> "$GITHUB_OUTPUT"
+            else
+              printf "The branch contains version %s which is newer than %s, aborting\n" "$GREATER_OLD_VERSION" "$VERSION"
+            fi
+          fi
+      -
+        name: Set branch to tag
+        if: steps.set-branch.outputs.is-new || steps.check-version.outputs.ok
+        env:
+          TAG: ${{ github.event.ref }}
+        run: git reset --hard "refs/tags/$TAG"
+      -
+        name: Push branch
+        if: steps.set-branch.outputs.is-new || steps.check-version.outputs.ok
+        env:
+          BRANCH: ${{ steps.check-tag.outputs.branch }}
+        run: git push --force-with-lease origin "$BRANCH"
