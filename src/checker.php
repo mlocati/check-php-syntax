@@ -39,13 +39,25 @@ class PHPSyntaxChecker
      */
     private $rootDir;
 
+    /**
+     * @var string[]
+     */
     private $includeFiles = array();
 
+    /**
+     * @var string[]
+     */
     private $excludePaths = array();
+
+    /**
+     * @var bool
+     */
+    private $invalidate;
 
     public function __construct()
     {
         $this->rootDir = rtrim(getcwd(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $this->invalidate = function_exists('opcache_invalidate');
     }
 
     /**
@@ -136,9 +148,10 @@ class PHPSyntaxChecker
      */
     private function checkFile($phpFile)
     {
+        $absoluteFile = $this->rootDir . $phpFile;
         $message = '';
         try {
-            $compiled = opcache_compile_file($this->rootDir . $phpFile);
+            $compiled = opcache_compile_file($absoluteFile);
         } catch (ParseError $x) { // PHP >= 7.0
             return trim($x->getMessage()) . "\nFile: {$phpFile}\nLine: {$x->getLine()}";
         } catch (RuntimeException $x) { // PHP < 7.0
@@ -150,6 +163,9 @@ class PHPSyntaxChecker
                 $message = 'Compilation failed';
             }
             return "{$message}\nFile: {$phpFile}";
+        }
+        if ($this->invalidate) {
+            opcache_invalidate($absoluteFile, true);
         }
 
         return '';
