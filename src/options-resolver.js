@@ -7,7 +7,7 @@ const fs = require('node:fs');
  *
  * @returns {string[]}
  */
-function stringToRelativePaths(option) {
+function getRelativePathsOption(option) {
     const result = [];
     let str = core.getInput(option);
     if (str === '') {
@@ -23,6 +23,22 @@ function stringToRelativePaths(option) {
         }
     });
     return result;
+}
+
+/**
+ * @param {string} option
+ *
+ * @returns bool
+ */
+function getBooleanOption(option) {
+    const str = core.getInput(option).toLowerCase();
+    if (['1', 'yes', 'y', 'true', 't', 'on'].includes(str)) {
+        return true;
+    }
+    if (['0', 'no', 'n', 'false', 'f', 'off', ''].includes(str)) {
+        return false;
+    }
+    throw new Error(`Invalid ${option} option: "${str}" is not a boolean-like value`);
 }
 
 /**
@@ -46,20 +62,15 @@ function getDirectory()
 }
 
 /**
- * @typedef {Object} Result
- * @property {string[]} directory
- * @property {string[]} include
- * @property {string[]} exclude
- */
-
-/**
- * @returns {Result}
+ * @returns {Options}
  */
 function resolveArguments() {
     return {
         directory: getDirectory(),
-        include: stringToRelativePaths('include'),
-        exclude: stringToRelativePaths('exclude'),
+        include: getRelativePathsOption('include'),
+        exclude: getRelativePathsOption('exclude'),
+        supportDuplicatedNames: getBooleanOption('support-duplicated-names'),
+        debug: getBooleanOption('debug'),
     };
 }
 

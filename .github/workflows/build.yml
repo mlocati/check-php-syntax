@@ -47,12 +47,18 @@ jobs:
           tools: none
       -
         name: Test (should fail)
+        id: fail1
         continue-on-error: true
         uses: ./
         with:
           directory: test
       -
+        name: Stop if execution was successful
+        if: steps.fail1.outcome == 'success'
+        run: exit 1
+      -
         name: Test (should fail)
+        id: fail2
         continue-on-error: true
         uses: ./
         with:
@@ -60,7 +66,36 @@ jobs:
           include: |
             broken-without-extension
           exclude: |
+            bar
             broken.php
+          debug: true
+      -
+        name: Stop if execution was successful
+        if: steps.fail2.outcome == 'success'
+        run: exit 1
+      -
+        name: Test (should fail on PHP < 8.3)
+        id: fail3
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test
+          exclude: |
+            broken.php
+          debug: true
+      -
+        name: Stop if execution was successful
+        if: steps.fail3.outcome == 'success'
+        run: exit 1
+      -
+        name: Test (should pass)
+        uses: ./
+        with:
+          directory: test
+          exclude: |
+            bar/foo.php
+            broken.php
+          debug: true
       -
         name: Test (should pass)
         uses: ./
@@ -68,6 +103,8 @@ jobs:
           directory: test
           exclude: |
             broken.php
+          support-duplicated-names: true
+          debug: true
       -
         name: Build JS
         run: npm run-script prod
