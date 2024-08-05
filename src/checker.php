@@ -232,20 +232,15 @@ foreach ($argv as $argvIndex => $argvValue) {
     }
 }
 
-printf(
-    "Checking files with PHP %s.%s.%s (please be sure it's the minimum supported version)... ",
-    PHP_MAJOR_VERSION, PHP_MINOR_VERSION, PHP_RELEASE_VERSION
-);
 $result = $checker->check();
-echo "files checked: {$result->numFilesChecked} (skipped: {$result->numFilesSkipped}).\n";
+
+foreach ($result->errors as $index => $error) {
+    echo 'Error #', $index + 1, ') ', $error, "\n";
+}
+echo "Number of files processed: {$result->numFilesChecked}\nNumber of items skipped: {$result->numFilesSkipped}\n";
 if ($result->errors === array()) {
     echo "No errors found.\n";
 } else {
     echo "ERRORS FOUND!\n";
-    foreach ($result->errors as $index => $error) {
-        echo 'Error #', $index + 1, ') ', $error, "\n";
-    }
+    exit(1);
 }
-
-
-exit($result->errors === array() ? 0 : 1);
