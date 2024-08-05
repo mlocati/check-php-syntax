@@ -52,6 +52,7 @@ jobs:
         uses: ./
         with:
           directory: test
+          debug: true
       -
         name: Stop if execution was successful
         if: steps.fail01.outcome == 'success'
@@ -119,6 +120,7 @@ jobs:
         uses: ./
         with:
           directory: test
+          debug: true
       -
         name: Stop if execution was successful
         if: steps.fail11.outcome == 'success'
