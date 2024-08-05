@@ -64,7 +64,7 @@ jobs:
         env:
           VERSION: ${{ steps.check-tag.outputs.version }}
         run: |
-          GREATER_OLD_VERSION=""
+          NEWEST_OLD_VERSION=''
           for OLD_TAG in $(git tag -l --merged); do
             case "$OLD_TAG" in
               v.*)
@@ -77,28 +77,28 @@ jobs:
                 OLD_VERSION="$OLD_TAG"
             esac
             if [ -z "$(printf '%s' "$OLD_VERSION" | sed -E 's/^([0-9]+)\.[0-9]+\.[0-9]+$//')" ]; then
-              if [ -z "$GREATER_OLD_VERSION" ]; then
-                GREATER_OLD_VERSION="$OLD_VERSION"
+              if [ -z "$NEWEST_OLD_VERSION" ]; then
+                NEWEST_OLD_VERSION="$OLD_VERSION"
               else
-                GREATER_VERSION="$(printf '%s\n%s' "$GREATER_OLD_VERSION" "$OLD_VERSION" | sort -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
-                if [ "$GREATER_VERSION" = "$GREATER_OLD_VERSION" ]; then
-                  GREATER_OLD_VERSION="$OLD_VERSION"
+                NEWER_VERSION="$(printf '%s\n%s' "$NEWEST_OLD_VERSION" "$OLD_VERSION" | sort -r -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
+                if [ "$NEWER_VERSION" = "$OLD_VERSION" ]; then
+                  NEWEST_OLD_VERSION="$OLD_VERSION"
                 fi
               fi
             fi
           done
-          if [ -z "$GREATER_OLD_VERSION" ]; then
+          if [ -z "$NEWEST_OLD_VERSION" ]; then
             printf "There's no other version in the branch\n"
             echo "ok=1" >> "$GITHUB_OUTPUT"
-          elif [ "$GREATER_OLD_VERSION" = "$VERSION" ]; then
+          elif [ "$NEWEST_OLD_VERSION" = "$VERSION" ]; then
             printf "The branch already contains version %s, aborting\n" "$VERSION"
           else
-            GREATER_VERSION="$(printf '%s\n%s' "$GREATER_OLD_VERSION" "$VERSION" | sort -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
-            if [ "$GREATER_VERSION" = "$VERSION" ]; then
-              printf "The latest version in the branch (%s) is older than the new one (%s)\n" "$GREATER_OLD_VERSION" "$VERSION"
+            NEWER_VERSION="$(printf '%s\n%s' "$NEWEST_OLD_VERSION" "$VERSION" | sort -r -t '.' -n -k1,1 -k2,2 -k3,3 | head -n 1)"
+            if [ "$NEWER_VERSION" = "$VERSION" ]; then
+              printf "The latest version in the branch (%s) is older than the new one (%s)\n" "$NEWEST_OLD_VERSION" "$VERSION"
               echo "ok=1" >> "$GITHUB_OUTPUT"
             else
-              printf "The branch contains version %s which is newer than %s, aborting\n" "$GREATER_OLD_VERSION" "$VERSION"
+              printf "The branch contains version %s which is newer than %s, aborting\n" "$NEWEST_OLD_VERSION" "$VERSION"
             fi
           fi
       -
