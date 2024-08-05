@@ -38,7 +38,7 @@ jobs:
         name: Build JS (development)
         run: npm run-script dev
       -
-        name: Setup PHP
+        name: Setup PHP 5.3
         uses: shivammathur/setup-php@v2
         with:
           php-version: '5.3'
@@ -47,18 +47,18 @@ jobs:
           tools: none
       -
         name: Test (should fail)
-        id: fail1
+        id: fail01
         continue-on-error: true
         uses: ./
         with:
           directory: test
       -
         name: Stop if execution was successful
-        if: steps.fail1.outcome == 'success'
+        if: steps.fail01.outcome == 'success'
         run: exit 1
       -
         name: Test (should fail)
-        id: fail2
+        id: fail02
         continue-on-error: true
         uses: ./
         with:
@@ -71,11 +71,11 @@ jobs:
           debug: true
       -
         name: Stop if execution was successful
-        if: steps.fail2.outcome == 'success'
+        if: steps.fail02.outcome == 'success'
         run: exit 1
       -
         name: Test (should fail on PHP < 8.3)
-        id: fail3
+        id: fail03
         continue-on-error: true
         uses: ./
         with:
@@ -85,7 +85,7 @@ jobs:
           debug: true
       -
         name: Stop if execution was successful
-        if: steps.fail3.outcome == 'success'
+        if: steps.fail03.outcome == 'success'
         run: exit 1
       -
         name: Test (should pass)
@@ -104,6 +104,49 @@ jobs:
           exclude: |
             broken.php
           support-duplicated-names: true
+          debug: true
+      -
+        name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: none
+      -
+        name: Test (should fail)
+        id: fail11
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test
+      -
+        name: Stop if execution was successful
+        if: steps.fail11.outcome == 'success'
+        run: exit 1
+      -
+        name: Test (should fail)
+        id: fail12
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test
+          include: |
+            broken-without-extension
+          exclude: |
+            bar
+            broken.php
+          debug: true
+      -
+        name: Stop if execution was successful
+        if: steps.fail12.outcome == 'success'
+        run: exit 1
+      -
+        name: Test (should pass)
+        uses: ./
+        with:
+          directory: test
+          exclude: |
+            broken.php
           debug: true
       -
         name: Build JS
