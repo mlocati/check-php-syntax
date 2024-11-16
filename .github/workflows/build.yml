@@ -151,6 +151,25 @@ jobs:
             broken.php
           debug: true
       -
+        name: Clone a fairly big PHP project
+        run: |
+          rm -rf /tmp/big-project
+          mkdir -p /tmp/big-project
+          curl -sSLf -o- https://codeload.github.com/concretecms/concretecms/tar.gz/refs/tags/9.3.7 | tar -xz -C /tmp/big-project --strip-components=1
+      -
+        name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      -
+        name: Test (should pass)
+        uses: ./
+        with:
+          directory: /tmp/big-project
+          debug: true
+      -
         name: Build JS
         run: npm run-script prod
       -
