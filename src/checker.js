@@ -94,12 +94,17 @@ function getMaxCommandLineLength(debug)
         raw = child_process.execSync('env', execOptions).trim();
         const envSize = raw.length;
         const numEnvVars = raw.split('\n').length;
-        const result = argMax - envSize - numEnvVars * 4 - 2048;
-        if (result < 1) {
+        const calculated = argMax - envSize - numEnvVars * 4 - 2048;
+        if (calculated < 1) {
             throw new Error(`ARG_MAX seems too low`);
         }
         if (debug) {
-            process.stdout.write(`Maximum length of command lines: ${result} (${argMax} - ${envSize} - ${numEnvVars} * 4 - 2048)\n`);
+            process.stdout.write(`Calculated length of command lines: ${calculated} (${argMax} - ${envSize} - ${numEnvVars} * 4 - 2048)\n`);
+        }
+        const cap = 120000;
+        const result = calculated < cap ? calculated : cap;
+        if (debug) {
+            process.stdout.write(`Maximum length of command lines: min(${calculated}, ${cap}) = ${result}\n`);
         }
         return result;
     } catch (e) {
