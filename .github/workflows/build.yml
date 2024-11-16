@@ -51,7 +51,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          directory: test
+          directory: test/common
           debug: true
       -
         name: Stop if execution was successful
@@ -63,7 +63,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          directory: test
+          directory: test/common
           include: |
             broken-without-extension
           exclude: |
@@ -80,7 +80,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          directory: test
+          directory: test/common
           exclude: |
             broken.php
           debug: true
@@ -92,7 +92,7 @@ jobs:
         name: Test (should pass)
         uses: ./
         with:
-          directory: test
+          directory: test/common
           exclude: |
             bar/foo.php
             broken.php
@@ -101,11 +101,37 @@ jobs:
         name: Test (should pass)
         uses: ./
         with:
-          directory: test
+          directory: test/common
           exclude: |
             broken.php
           support-duplicated-names: true
           debug: true
+      -
+        name: Test with warnings (should pass)
+        uses: ./
+        with:
+          directory: test/warnings/php5.3
+          debug: true
+      -
+        name: Test with warnings (should pass)
+        uses: ./
+        with:
+          directory: test/warnings/php5.3
+          fail-on-warnings: false
+          debug: true
+      -
+        name: Test with warnings (should fail)
+        id: fail-warn-1
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test/warnings/php5.3
+          fail-on-warnings: true
+          debug: true
+      -
+        name: Stop if execution was successful
+        if: steps.fail-warn-1.outcome == 'success'
+        run: exit 1
       -
         name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
@@ -119,7 +145,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          directory: test
+          directory: test/common
           debug: true
       -
         name: Stop if execution was successful
@@ -131,7 +157,7 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          directory: test
+          directory: test/common
           include: |
             broken-without-extension
           exclude: |
@@ -146,7 +172,7 @@ jobs:
         name: Test (should pass)
         uses: ./
         with:
-          directory: test
+          directory: test/common
           exclude: |
             broken.php
           debug: true
@@ -169,6 +195,32 @@ jobs:
         with:
           directory: /tmp/big-project
           debug: true
+      -
+        name: Test with warnings (should pass)
+        uses: ./
+        with:
+          directory: test/warnings/php8.4
+          debug: true
+      -
+        name: Test with warnings (should pass)
+        uses: ./
+        with:
+          directory: test/warnings/php8.4
+          fail-on-warnings: false
+          debug: true
+      -
+        name: Test with warnings (should fail)
+        id: fail-warn-2
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test/warnings/php8.4
+          fail-on-warnings: true
+          debug: true
+      -
+        name: Stop if execution was successful
+        if: steps.fail-warn-2.outcome == 'success'
+        run: exit 1
       -
         name: Build JS
         run: npm run-script prod

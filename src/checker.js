@@ -3,6 +3,10 @@ const child_process = require('node:child_process');
 const { FilesProvider} = require('./files-provider.js');
 const { Shescape } = require('shescape');
 
+const CHECKRESULT_OK = 1;
+const CHECKRESULT_WARNINGS = 2;
+const CHECKRESULT_ERRORS = 3;
+
 /**
  * @typedef {object} PHPVersion
  * @property {number} major
@@ -13,9 +17,9 @@ const { Shescape } = require('shescape');
 const shescape = new Shescape();
 
 /**
- * @param {string} arg 
+ * @param {string} arg
  *
- * @returns string
+ * @returns {string}
  */
 function escapeArgument(arg)
 {
@@ -57,8 +61,7 @@ function getPHPVersion()
 }
 
 /**
- * 
- * @param {bool} debug 
+ * @param {bool} debug
  *
  * @returns {number}
  */
@@ -127,7 +130,7 @@ function getMaxCommandLineLength(debug)
 function* generateCommandLines(filesProvider, options, multipleFiles)
 {
     const maxCommandLineLength = multipleFiles ? getMaxCommandLineLength(options.debug) : 0;
-    const prefix = 'php -n -d display_errors=stderr -l';
+    const prefix = 'php -n -d display_errors=stderr -d error_reporting=-1 -l';
     let commandLine = '';
     for (const file of filesProvider.getFiles()) {
         const chunk = ' ' + escapeArgument(file);
@@ -152,9 +155,9 @@ function* generateCommandLines(filesProvider, options, multipleFiles)
  * @param {Options} options
  * @param {bool} multipleFiles
  *
- * @returns {bool}
+ * @returns {Promise<int>}
  */
-function checkWithL(options, multipleFiles)
+async function checkWithL(options, multipleFiles)
 {
     if (options.debug) {
         if (multipleFiles) {
@@ -164,40 +167,63 @@ function checkWithL(options, multipleFiles)
         }
     }
     const filesProvider = new FilesProvider(options);
-    let success = true;
+    let result = CHECKRESULT_OK;
     for (const commandLine of generateCommandLines(filesProvider, options, multipleFiles)) {
         if (options.debug) {
             process.stdout.write(`Executing: ${commandLine}\n`)
         }
-        try {
-            child_process.execSync(
-                commandLine,
-                {
-                    cwd: options.directory,
-                    stdio: [
-                        // stdin
-                        'ignore',
-                        // stout
-                        'ignore',
-                        // stderr
-                        'inherit',
-                    ],
-                }
-            );
-        } catch {
-            success = false;
-        }
+        result = Math.max(result, await checkWithLDo(options, commandLine));
     }
     process.stdout.write(`\nNumber of files processed: ${filesProvider.numFilesProvided}\nNumber of items skipped: ${filesProvider.numItemsSkipped}\n`)
-    process.stdout.write(success ? 'No errors found.\n' : 'ERRORS FOUND!\n');
 
-    return success;
+    return result;
+}
+
+/**
+ * @param {Options} options
+ * @param {string} commandLine
+ *
+ * @returns {Promise<int>}
+ */
+function checkWithLDo(options, commandLine)
+{
+    const child = child_process.exec(
+        commandLine,
+        {
+            cwd: options.directory,
+            stdio: [
+                // stdin
+                'ignore',
+                // stout
+                'ignore',
+                // stderr
+                'pipe',
+            ],
+        }
+    );
+    let warningsDetected = false;
+    child.stderr.on('data', (data) => {
+        warningsDetected = true;
+        process.stderr.write(data.toString());
+    });
+
+    return new Promise((resolve, _reject) => {
+        child.on('close', (code) => {
+            if (code !== 0) {
+                resolve(CHECKRESULT_ERRORS);
+            } else if(warningsDetected) {
+                resolve(CHECKRESULT_WARNINGS);
+            } else {
+                resolve(CHECKRESULT_OK);
+            }
+        });
+    });
 }
 
 /**
  * @param {Options} options
  *
- * @returns {bool}
+ * @returns {Promise<int>}
  */
 function checkWithOpCache(options)
 {
@@ -205,13 +231,15 @@ function checkWithOpCache(options)
         process.stdout.write('Using opcache to check the files\n')
     }
     const args = [
+        '-d', 'display_errors=stderr',
+        '-d', 'error_reporting=-1',
         '-d', 'opcache.enable_cli=1',
         path.join(__dirname, 'checker.php'),
     ];
     options.include.forEach((f) => args.push(`+${f}`));
     options.exclude.forEach((f) => args.push(`-${f}`));
-    
-    const procInfo = child_process.spawnSync(
+
+    const child = child_process.spawn(
         'php',
         args,
         {
@@ -222,32 +250,57 @@ function checkWithOpCache(options)
                 // stout
                 'inherit',
                 // stderr
-                'inherit',
+                'pipe',
             ],
         }
     );
+    let warningsDetected = false;
+    child.stderr.on('data', (data) => {
+        warningsDetected = true;
+        process.stderr.write(data.toString());
+    });
 
-    return procInfo.status === 0;
+    return new Promise((resolve, _reject) => {
+        child.on('close', (code) => {
+            if (code !== 0) {
+                resolve(CHECKRESULT_ERRORS);
+            } else if(warningsDetected) {
+                resolve(CHECKRESULT_WARNINGS);
+            } else {
+                resolve(CHECKRESULT_OK);
+            }
+        });
+    });
 }
 
 
 /**
  * @param {Options} options
  */
-function check(options)
+async function check(options)
 {
     const PHP_VERSION = getPHPVersion();
     process.stdout.write(`Checking files with PHP ${PHP_VERSION.major}.${PHP_VERSION.minor}.${PHP_VERSION.patch}\n`);
     let result;
     if (PHP_VERSION.major > 9 || PHP_VERSION.major === 8 && PHP_VERSION.minor >= 3) {
-        result = checkWithL(options, true)
+        result = await checkWithL(options, true)
     } else if (options.supportDuplicatedNames) {
-        result = checkWithL(options, false)
+        result = await checkWithL(options, false)
     } else {
-        result = checkWithOpCache(options);
+        result = await checkWithOpCache(options);
     }
-    if (result !== true) {
-        process.exit(1);
+    switch (result) {
+        case CHECKRESULT_OK:
+            process.stdout.write('No errors found.\n');
+            process.exit(0);
+            break;
+        case CHECKRESULT_WARNINGS:
+            process.stdout.write('Warnings found!\n');
+            process.exit(options.failOnWarnings ? 1 : 0);
+        case CHECKRESULT_ERRORS:
+        default:
+            process.stdout.write('Errors found!\n');
+            process.exit(1);
     }
 }
 
