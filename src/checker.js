@@ -10,7 +10,7 @@ const { Shescape } = require('shescape');
  * @property {number} patch
  */
 
-let shescape = null;
+const shescape = new Shescape();
 
 /**
  * @param {string} arg 
@@ -22,9 +22,6 @@ function escapeArgument(arg)
     const check = process.platform === 'win32' ? arg.replaceAll(path.sep, '/') : arg;
     if (!/[^a-zA-Z0-9_\-/.]/.test(check)) {
         return arg;
-    }
-    if (shescape === null) {
-        shescape = new Shescape();
     }
 
     return shescape.escape(arg);
