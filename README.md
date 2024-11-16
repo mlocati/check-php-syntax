@@ -132,7 +132,7 @@ You can make the check fails by using the `fail-on-warnings` option:
 
 ```yaml
 with:
-  `fail-on-warnings`: true
+  fail-on-warnings: true
 ```
 
 ### `support-duplicated-names`
