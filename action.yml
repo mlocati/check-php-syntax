@@ -14,14 +14,18 @@ inputs:
     description: "A list of directories and files (relative to the root directory) to be skipped"
     required: false
     default: ""
+  fail-on-warnings:
+    description: "Let the action fail in case of warnings"
+    required: false
+    default: "false"
   support-duplicated-names:
     description: "Add support for duplicated class/function names (slower)"
     required: false
-    default: ""
+    default: "false"
   debug:
     description: "Dump debug information"
     required: false
-    default: ""
+    default: "false"
 runs:
   using: node20
   main: dist/index.js

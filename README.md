@@ -63,6 +63,7 @@ jobs:
           exclude: |
             tests/shim1
             tests/shim2
+          fail-on-warnings: true
 ```
 
 ### Sample Output
@@ -121,6 +122,17 @@ with:
   exclude: |
     tests/stubs
     tests/shims
+```
+
+### `fail-on-warnings`
+
+By default, the check passes in case of warnings (for example: deprecations).
+
+You can make the check fails by using the `fail-on-warnings` option:
+
+```yaml
+with:
+  `fail-on-warnings`: true
 ```
 
 ### `support-duplicated-names`

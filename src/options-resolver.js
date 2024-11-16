@@ -69,6 +69,7 @@ function resolveArguments() {
         directory: getDirectory(),
         include: getRelativePathsOption('include'),
         exclude: getRelativePathsOption('exclude'),
+        failOnWarnings: getBooleanOption('fail-on-warnings'),
         supportDuplicatedNames: getBooleanOption('support-duplicated-names'),
         debug: getBooleanOption('debug'),
     };
