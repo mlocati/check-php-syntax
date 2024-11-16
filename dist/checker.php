@@ -238,9 +238,6 @@ foreach ($result->errors as $index => $error) {
     echo 'Error #', $index + 1, ') ', $error, "\n";
 }
 echo "Number of files processed: {$result->numFilesChecked}\nNumber of items skipped: {$result->numFilesSkipped}\n";
-if ($result->errors === array()) {
-    echo "No errors found.\n";
-} else {
-    echo "ERRORS FOUND!\n";
+if ($result->errors !== array()) {
     exit(1);
 }
