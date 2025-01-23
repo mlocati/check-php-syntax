@@ -282,7 +282,7 @@ async function check(options)
     const PHP_VERSION = getPHPVersion();
     process.stdout.write(`Checking files with PHP ${PHP_VERSION.major}.${PHP_VERSION.minor}.${PHP_VERSION.patch}\n`);
     let result;
-    if (PHP_VERSION.major > 9 || PHP_VERSION.major === 8 && PHP_VERSION.minor >= 3) {
+    if (PHP_VERSION.major > 8 || PHP_VERSION.major === 8 && PHP_VERSION.minor >= 3) {
         result = await checkWithL(options, true)
     } else if (options.supportDuplicatedNames) {
         result = await checkWithL(options, false)
