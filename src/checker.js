@@ -69,7 +69,7 @@ function getMaxCommandLineLength(debug)
 {
     if (process.platform === 'win32') {
         /** @see https://learn.microsoft.com/en-us/troubleshoot/windows-client/shell-experience/command-line-string-limitation */
-        const result = 8191;
+        const result = 8100;
         if (debug) {
             process.stdout.write(`Maximum length of command lines: ${result} (fixed for Windows)\n`);
         }
