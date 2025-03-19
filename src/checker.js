@@ -125,12 +125,13 @@ function getMaxCommandLineLength(debug)
 /**
  * @param {FilesProvider} filesProvider
  * @param {Options} options
+ * @param {PHPVersion} phpVersion
  * @param {bool} multipleFiles
  */
-function* generateCommandLines(filesProvider, options, multipleFiles)
+function* generateCommandLines(filesProvider, options, phpVersion, multipleFiles)
 {
     const maxCommandLineLength = multipleFiles ? getMaxCommandLineLength(options.debug) : 0;
-    const prefix = 'php -n -d display_errors=stderr -d error_reporting=-1 -l';
+    const prefix = 'php -n -d display_errors=stderr -d error_reporting=-1' + (phpVersion.major >= 8 ? ' -d opcache.jit=disable' : '') + ' -l';
     let commandLine = '';
     for (const file of filesProvider.getFiles()) {
         const chunk = ' ' + escapeArgument(file);
@@ -153,11 +154,12 @@ function* generateCommandLines(filesProvider, options, multipleFiles)
 
 /**
  * @param {Options} options
+ * @param {PHPVersion} phpVersion
  * @param {bool} multipleFiles
  *
  * @returns {Promise<int>}
  */
-async function checkWithL(options, multipleFiles)
+async function checkWithL(options, phpVersion, multipleFiles)
 {
     if (options.debug) {
         if (multipleFiles) {
@@ -168,7 +170,7 @@ async function checkWithL(options, multipleFiles)
     }
     const filesProvider = new FilesProvider(options);
     let result = CHECKRESULT_OK;
-    for (const commandLine of generateCommandLines(filesProvider, options, multipleFiles)) {
+    for (const commandLine of generateCommandLines(filesProvider, options, phpVersion, multipleFiles)) {
         if (options.debug) {
             process.stdout.write(`Executing: ${commandLine}\n`)
         }
@@ -222,10 +224,11 @@ function checkWithLDo(options, commandLine)
 
 /**
  * @param {Options} options
+ * @param {PHPVersion} phpVersion
  *
  * @returns {Promise<int>}
  */
-function checkWithOpCache(options)
+function checkWithOpCache(options, phpVersion)
 {
     if (options.debug) {
         process.stdout.write('Using opcache to check the files\n')
@@ -234,8 +237,12 @@ function checkWithOpCache(options)
         '-d', 'display_errors=stderr',
         '-d', 'error_reporting=-1',
         '-d', 'opcache.enable_cli=1',
-        path.join(__dirname, 'checker.php'),
     ];
+    if (phpVersion.major >= 8) {
+        args.push('-d');
+        args.push('opcache.jit=disable');
+    }
+    args.push(path.join(__dirname, 'checker.php'));
     options.include.forEach((f) => args.push(`+${f}`));
     options.exclude.forEach((f) => args.push(`-${f}`));
 
@@ -279,15 +286,15 @@ function checkWithOpCache(options)
  */
 async function check(options)
 {
-    const PHP_VERSION = getPHPVersion();
-    process.stdout.write(`Checking files with PHP ${PHP_VERSION.major}.${PHP_VERSION.minor}.${PHP_VERSION.patch}\n`);
+    const phpVersion = getPHPVersion();
+    process.stdout.write(`Checking files with PHP ${phpVersion.major}.${phpVersion.minor}.${phpVersion.patch}\n`);
     let result;
-    if (PHP_VERSION.major > 8 || PHP_VERSION.major === 8 && PHP_VERSION.minor >= 3) {
-        result = await checkWithL(options, true)
+    if (phpVersion.major > 8 || phpVersion.major === 8 && phpVersion.minor >= 3) {
+        result = await checkWithL(options, phpVersion, true)
     } else if (options.supportDuplicatedNames) {
-        result = await checkWithL(options, false)
+        result = await checkWithL(options, phpVersion, false)
     } else {
-        result = await checkWithOpCache(options);
+        result = await checkWithOpCache(options, phpVersion);
     }
     switch (result) {
         case CHECKRESULT_OK:
