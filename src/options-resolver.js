@@ -65,7 +65,7 @@ function getDirectory()
  * @returns {Options}
  */
 function resolveArguments() {
-    return {
+    const result = {
         directory: getDirectory(),
         include: getRelativePathsOption('include'),
         exclude: getRelativePathsOption('exclude'),
@@ -73,6 +73,15 @@ function resolveArguments() {
         supportDuplicatedNames: getBooleanOption('support-duplicated-names'),
         debug: getBooleanOption('debug'),
     };
+    if (result.debug) {
+        console.log('Input options:');
+        console.log(`  directory: ${JSON.stringify(result.directory)}`);
+        console.log(`  include: ${JSON.stringify(result.include)}`);
+        console.log(`  exclude: ${JSON.stringify(result.exclude)}`);
+        console.log(`  fail-on-warnings: ${JSON.stringify(result.failOnWarnings)}`);
+        console.log(`  support-duplicated-names: ${JSON.stringify(result.supportDuplicatedNames)}`);
+    }
+    return result;
 }
 
 exports.resolveArguments = resolveArguments;
