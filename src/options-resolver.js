@@ -74,12 +74,15 @@ function resolveArguments() {
         debug: getBooleanOption('debug'),
     };
     if (result.debug) {
-        console.log('Input options:');
-        console.log(`  directory: ${JSON.stringify(result.directory)}`);
-        console.log(`  include: ${JSON.stringify(result.include)}`);
-        console.log(`  exclude: ${JSON.stringify(result.exclude)}`);
-        console.log(`  fail-on-warnings: ${JSON.stringify(result.failOnWarnings)}`);
-        console.log(`  support-duplicated-names: ${JSON.stringify(result.supportDuplicatedNames)}`);
+        process.stdout.write([
+            'Input options:',
+            `- directory: ${JSON.stringify(result.directory)}`,
+            `- include: ${JSON.stringify(result.include)}`,
+            `- exclude: ${JSON.stringify(result.exclude)}`,
+            `- fail-on-warnings: ${JSON.stringify(result.failOnWarnings)}`,
+            `- support-duplicated-names: ${JSON.stringify(result.supportDuplicatedNames)}`,
+            ''
+        ].join('\n'));
     }
     return result;
 }
