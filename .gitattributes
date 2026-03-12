@@ -3,3 +3,12 @@
 /test/ export-ignore
 /rollup.config.js export-ignore
 /package-lock.json export-ignore
+
+* text=auto eol=lf
+
+# Explicitly declare common text files
+*.js    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.php   text eol=lf
+*.yml   text eol=lf
