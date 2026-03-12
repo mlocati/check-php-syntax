@@ -1,4 +1,4 @@
-name: Build
+name: Continuous Integration
 
 on:
   pull_request:
@@ -19,24 +19,71 @@ on:
       - "package.json"
 
 jobs:
-  build:
-    name: Build action
+
+  check-dist:
+    name: Check dist folder
     runs-on: ubuntu-latest
     steps:
       -
-        name: Setup NodeJS
-        uses: actions/setup-node@v4
+        name: Install NodeJS
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
+          node-version: 24.x
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       -
-        name: Install NPM packages
         run: npm ci
       -
-        name: Build JS (development)
-        run: npm run-script dev
+        name: Build dist
+        run: npm run-script build
+      -
+        name: Check changes
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::Changes detected in dist folder. Please run 'npm run build' and commit the changes before pushing"
+            git diff --name-only
+            exit 1
+          fi
+
+  check-php-syntax:
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - '5.3'
+          - '8.5'
+    name: Check PHP ${{ matrix.php-version }} syntax
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Install PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: opcache
+          coverage: none
+          tools: none
+      -
+        name: Checkout
+        uses: actions/checkout@v6
+      -
+        name: Check syntax
+        uses: ./
+        with:
+          directory: src
+          fail-on-warnings: true
+
+  test-repo:
+    name: Tests in repo
+    needs:
+      - check-dist
+      - check-php-syntax
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v6
       -
         name: Setup PHP 5.3
         uses: shivammathur/setup-php@v2
@@ -177,24 +224,12 @@ jobs:
             broken.php
           debug: true
       -
-        name: Clone a fairly big PHP project
-        run: |
-          rm -rf /tmp/big-project
-          mkdir -p /tmp/big-project
-          curl -sSLf -o- https://codeload.github.com/concretecms/concretecms/tar.gz/refs/tags/9.3.7 | tar -xz -C /tmp/big-project --strip-components=1
-      -
         name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
           tools: none
-      -
-        name: Test (should pass)
-        uses: ./
-        with:
-          directory: /tmp/big-project
-          debug: true
       -
         name: Test with warnings (should pass)
         uses: ./
@@ -221,32 +256,37 @@ jobs:
         name: Stop if execution was successful
         if: steps.fail-warn-2.outcome == 'success'
         run: exit 1
+
+  test-remote:
+    name: Tests with dist
+    needs:
+      - check-dist
+      - check-php-syntax
+    runs-on: ubuntu-latest
+    steps:
       -
-        name: Build JS
-        run: npm run-script prod
+        name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
       -
-        name: Copy assets
-        run: cp src/checker.php dist/
-      -
-        name: Check changes
-        if: github.event_name == 'push'
-        id: changes-check
+        name: Download action
         run: |
-          GIT_OUTPUT="$(git status --porcelain ./dist)"
-          if [ -n "$GIT_OUTPUT" ]; then
-            printf 'Changes detected:\n%s\n' "$GIT_OUTPUT"
-            CHANGES=y
-          else
-            echo 'No changes detected'
-            CHANGES=n
-          fi
-          echo "detected=$CHANGES" >>"$GITHUB_OUTPUT"
+          curl -sSLf -o- \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            'https://api.github.com/repos/${{ github.repository }}/tarball/${{ github.ref }}' \
+            | tar -xz --strip-components=1
       -
-        name: Commit changes
-        if: github.event_name == 'push' && steps.changes-check.outputs.detected == 'y' 
+        name: Clone a fairly big PHP project
         run: |
-          git config user.name 'GitHub Action bot'
-          git config user.email 'michele@locati.it'
-          git add --all dist
-          git commit -m 'Automatic build'
-          git push
+          mkdir -p /tmp/big-project
+          curl -sSLf -o- https://codeload.github.com/concretecms/concretecms/tar.gz/refs/tags/9.3.7 | tar -xz -C /tmp/big-project --strip-components=1
+      -
+        name: Test (should pass)
+        uses: ./
+        with:
+          directory: /tmp/big-project
+          debug: true

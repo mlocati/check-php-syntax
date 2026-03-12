@@ -1,57 +1,64 @@
-const core = require('@actions/core');
-const path = require('node:path');
-const fs = require('node:fs');
+import { getInput } from '@actions/core';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+
+/** @import { Options } from './types.js' */
+
+const isWindows = process.platform === 'win32';
 
 /**
- * @param {string} option
- *
+ * Parse an input option that contains a list of relative paths, separated by newlines.
+ * @param {string} optionName
+ * @throws {Error} If any of the paths is absolute
  * @returns {string[]}
  */
-function getRelativePathsOption(option) {
-    const result = [];
-    let str = core.getInput(option);
+function getRelativePathsOption(optionName) {
+    let str = getInput(optionName);
     if (str === '') {
-        return result;
+        return [];
     }
-    str.replace(/\r\n/g, '\n').replace(/\r/g, '\r').split(/\n/).forEach((line) => {
-        line = line.replace(/^\s+|\s+$/g, '').replaceAll('/', path.sep);
-        if (line !== '') {
-            if (line[0] === path.sep) {
-                throw new Error(`Invalid ${option} option: "${line}" is an absolute path`);
+    return str
+        .replace(/\r/g, '\n')
+        .split(/\n/)
+        .map(line => line.trim())
+        .filter(line => line !== '')
+        .map(line => {
+            const normalizedLine = line.replaceAll('/', path.sep);
+            if (normalizedLine[0] === path.sep || (isWindows && normalizedLine.match(/^[a-zA-Z]:\\/))) {
+                throw new Error(`Invalid ${optionName} option: "${line}" is an absolute path`);
             }
-            result.push(line.trimEnd(path.sep));
-        }
-    });
-    return result;
+            return normalizedLine.trimEnd(path.sep);
+        })
+    ;
 }
 
 /**
- * @param {string} option
- *
- * @returns bool
+ * Parse a boolean input option.
+ * @param {string} optionName
+ * @throws {Error} If the input value is not a boolean-like string
+ * @returns {boolean}
  */
-function getBooleanOption(option) {
-    const str = core.getInput(option).toLowerCase();
-    if (['1', 'yes', 'y', 'true', 't', 'on'].includes(str)) {
+function getBooleanOption(optionName) {
+    const raw = getInput(optionName).trim();
+    const normalized = raw.toLowerCase();
+    if (['1', 'yes', 'y', 'true', 't', 'on'].includes(normalized)) {
         return true;
     }
-    if (['0', 'no', 'n', 'false', 'f', 'off', ''].includes(str)) {
+    if (['0', 'no', 'n', 'false', 'f', 'off', ''].includes(normalized)) {
         return false;
     }
-    throw new Error(`Invalid ${option} option: "${str}" is not a boolean-like value`);
+    throw new Error(`Invalid ${optionName} option: "${raw}" is not a boolean-like value`);
 }
 
 /**
- * @returns {string}
+ * Parse the directory input option, and validate that it exists and is a directory.
+ * @throws {Error} If the directory does not exist or is not a directory
+ * @returns {string} The absolute path of the directory to check the syntax of
  */
-function getDirectory()
-{
-    let raw = core.getInput('directory');
-    if (raw === '') {
-        raw = process.cwd();
-    }
-    raw = raw.replaceAll('/', path.sep);
-    const abs = path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(raw);
+function getDirectory() {
+    const raw = getInput('directory') || process.cwd();
+    const normalized = raw.replaceAll('/', path.sep);
+    const abs = path.isAbsolute(normalized) ? path.normalize(normalized) : path.resolve(normalized);
     if (!fs.existsSync(abs)) {
         throw new Error(`Invalid directory option: "${raw}" does not exist`);
     }
@@ -62,9 +69,11 @@ function getDirectory()
 }
 
 /**
+ * Parse the input options.
+ * @throws {Error} If any of the options is invalid
  * @returns {Options}
  */
-function resolveArguments() {
+export default function resolveArguments() {
     const result = {
         directory: getDirectory(),
         include: getRelativePathsOption('include'),
@@ -81,10 +90,7 @@ function resolveArguments() {
             `- exclude: ${JSON.stringify(result.exclude)}`,
             `- fail-on-warnings: ${JSON.stringify(result.failOnWarnings)}`,
             `- support-duplicated-names: ${JSON.stringify(result.supportDuplicatedNames)}`,
-            ''
-        ].join('\n'));
+        ].join('\n') + '\n');
     }
     return result;
 }
-
-exports.resolveArguments = resolveArguments;
