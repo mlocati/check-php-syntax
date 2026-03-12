@@ -27978,23 +27978,22 @@ const isWindows = process.platform === 'win32';
  * @returns {string[]}
  */
 function getRelativePathsOption(optionName) {
-    let str = getInput(optionName);
-    if (str === '') {
-        return [];
-    }
-    return str
-        .replace(/\r/g, '\n')
-        .split(/\n/)
-        .map(line => line.trim())
-        .filter(line => line !== '')
-        .map(line => {
-            const normalizedLine = line.replaceAll('/', path.sep);
-            if (normalizedLine[0] === path.sep || (isWindows && normalizedLine.match(/^[a-zA-Z]:\\/))) {
-                throw new Error(`Invalid ${optionName} option: "${line}" is an absolute path`);
-            }
-            return normalizedLine.trimEnd(path.sep);
-        })
-    ;
+  let str = getInput(optionName);
+  if (str === '') {
+    return [];
+  }
+  return str
+    .replace(/\r/g, '\n')
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .map((line) => {
+      const normalizedLine = line.replaceAll('/', path.sep);
+      if (normalizedLine[0] === path.sep || (isWindows && normalizedLine.match(/^[a-zA-Z]:\\/))) {
+        throw new Error(`Invalid ${optionName} option: "${line}" is an absolute path`);
+      }
+      return normalizedLine.trimEnd(path.sep);
+    });
 }
 
 /**
@@ -28004,15 +28003,15 @@ function getRelativePathsOption(optionName) {
  * @returns {boolean}
  */
 function getBooleanOption(optionName) {
-    const raw = getInput(optionName).trim();
-    const normalized = raw.toLowerCase();
-    if (['1', 'yes', 'y', 'true', 't', 'on'].includes(normalized)) {
-        return true;
-    }
-    if (['0', 'no', 'n', 'false', 'f', 'off', ''].includes(normalized)) {
-        return false;
-    }
-    throw new Error(`Invalid ${optionName} option: "${raw}" is not a boolean-like value`);
+  const raw = getInput(optionName).trim();
+  const normalized = raw.toLowerCase();
+  if (['1', 'yes', 'y', 'true', 't', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'no', 'n', 'false', 'f', 'off', ''].includes(normalized)) {
+    return false;
+  }
+  throw new Error(`Invalid ${optionName} option: "${raw}" is not a boolean-like value`);
 }
 
 /**
@@ -28021,16 +28020,16 @@ function getBooleanOption(optionName) {
  * @returns {string} The absolute path of the directory to check the syntax of
  */
 function getDirectory() {
-    const raw = getInput('directory') || process.cwd();
-    const normalized = raw.replaceAll('/', path.sep);
-    const abs = path.isAbsolute(normalized) ? path.normalize(normalized) : path.resolve(normalized);
-    if (!fs$1.existsSync(abs)) {
-        throw new Error(`Invalid directory option: "${raw}" does not exist`);
-    }
-    if (!fs$1.lstatSync(abs).isDirectory()) {
-        throw new Error(`Invalid directory option: "${raw}" is not a directory`);
-    }
-    return abs;
+  const raw = getInput('directory') || process.cwd();
+  const normalized = raw.replaceAll('/', path.sep);
+  const abs = path.isAbsolute(normalized) ? path.normalize(normalized) : path.resolve(normalized);
+  if (!fs$1.existsSync(abs)) {
+    throw new Error(`Invalid directory option: "${raw}" does not exist`);
+  }
+  if (!fs$1.lstatSync(abs).isDirectory()) {
+    throw new Error(`Invalid directory option: "${raw}" is not a directory`);
+  }
+  return abs;
 }
 
 /**
@@ -28039,25 +28038,27 @@ function getDirectory() {
  * @returns {Options}
  */
 function resolveArguments() {
-    const result = {
-        directory: getDirectory(),
-        include: getRelativePathsOption('include'),
-        exclude: getRelativePathsOption('exclude'),
-        failOnWarnings: getBooleanOption('fail-on-warnings'),
-        supportDuplicatedNames: getBooleanOption('support-duplicated-names'),
-        debug: getBooleanOption('debug'),
-    };
-    if (result.debug) {
-        process.stdout.write([
-            'Input options:',
-            `- directory: ${JSON.stringify(result.directory)}`,
-            `- include: ${JSON.stringify(result.include)}`,
-            `- exclude: ${JSON.stringify(result.exclude)}`,
-            `- fail-on-warnings: ${JSON.stringify(result.failOnWarnings)}`,
-            `- support-duplicated-names: ${JSON.stringify(result.supportDuplicatedNames)}`,
-        ].join('\n') + '\n');
-    }
-    return result;
+  const result = {
+    directory: getDirectory(),
+    include: getRelativePathsOption('include'),
+    exclude: getRelativePathsOption('exclude'),
+    failOnWarnings: getBooleanOption('fail-on-warnings'),
+    supportDuplicatedNames: getBooleanOption('support-duplicated-names'),
+    debug: getBooleanOption('debug'),
+  };
+  if (result.debug) {
+    process.stdout.write(
+      [
+        'Input options:',
+        `- directory: ${JSON.stringify(result.directory)}`,
+        `- include: ${JSON.stringify(result.include)}`,
+        `- exclude: ${JSON.stringify(result.exclude)}`,
+        `- fail-on-warnings: ${JSON.stringify(result.failOnWarnings)}`,
+        `- support-duplicated-names: ${JSON.stringify(result.supportDuplicatedNames)}`,
+      ].join('\n') + '\n',
+    );
+  }
+  return result;
 }
 
 /**
@@ -29765,101 +29766,102 @@ class Shescape {
  * Provides files to check the syntax of, based on the options provided.
  */
 class FilesProvider {
-    /**
-     * @type {Options}
-     */
-    #options;
+  /**
+   * @type {Options}
+   */
+  #options;
 
-    /**
-     * The number of items that were skipped because they were excluded.
-     * @type {number}
-     */
-    numItemsSkipped = 0;
-    /**
-     * The number of files that were provided.
-     * @type {number}
-     */
-    numFilesProvided = 0;
+  /**
+   * The number of items that were skipped because they were excluded.
+   * @type {number}
+   */
+  numItemsSkipped = 0;
+  /**
+   * The number of files that were provided.
+   * @type {number}
+   */
+  numFilesProvided = 0;
 
-    /**
-     * Creates a new files provider.
-     * @param {Options} options The options to use for providing files
-     */
-    constructor(options) {
-        this.#options = options;
+  /**
+   * Creates a new files provider.
+   * @param {Options} options The options to use for providing files
+   */
+  constructor(options) {
+    this.#options = options;
+  }
+
+  /**
+   * Provides relative paths of the files to check the syntax of.
+   * @returns {Generator<string, void, undefined>}
+   */
+  *getFiles() {
+    this.numItemsSkipped = 0;
+    this.numFilesProvided = 0;
+    for (const file of this.#options.include) {
+      yield file;
+    }
+    for (const file of this.#getFilesIn('')) {
+      if (this.#options.include.includes(file)) {
+        continue;
+      }
+      this.numFilesProvided++;
+      yield file;
+    }
+  }
+
+  /**
+   * Recursively provides relative paths of the files to check the syntax of, starting from a given relative directory.
+   * @param {string} relativeDirectory The directory to start from, relative to the directory specified in the options
+   * @returns {Generator<string, void, undefined>}
+   */
+  *#getFilesIn(relativeDirectory) {
+    const absoluteDirectory =
+      relativeDirectory === '' ? this.#options.directory : path__default.join(this.#options.directory, relativeDirectory);
+    const files = [];
+    const subDirectories = [];
+    fs__default.readdirSync(absoluteDirectory).forEach((item) => {
+      if (item === '.' || item === '..') {
+        return;
+      }
+      const relativeItem = relativeDirectory === '' ? item : path__default.join(relativeDirectory, item);
+      if (this.#isRelativePathExcluded(relativeItem)) {
+        this.numItemsSkipped++;
+        return;
+      }
+      const absoluteItem = path__default.join(absoluteDirectory, item);
+      if (fs__default.lstatSync(absoluteItem).isDirectory()) {
+        subDirectories.push(relativeItem);
+      } else if (item.match(/.\.php$/i)) {
+        files.push(relativeItem);
+      }
+    });
+    for (const file of files) {
+      yield file;
+    }
+    for (const subDirectory of subDirectories) {
+      for (const item of this.#getFilesIn(subDirectory)) {
+        yield item;
+      }
+    }
+  }
+
+  /**
+   * Checks if a given relative path should be skipped because it is excluded.
+   * @param {string} relativePath
+   * @returns {boolean}
+   */
+  #isRelativePathExcluded(relativePath) {
+    if (this.#options.exclude.includes(relativePath)) {
+      return true;
+    }
+    for (const exclude of this.#options.exclude) {
+      if (relativePath.startsWith(`${exclude}${path__default.sep}`)) {
+        return true;
+      }
     }
 
-    /**
-     * Provides relative paths of the files to check the syntax of.
-     * @returns {Generator<string, void, undefined>}
-     */
-    *getFiles() {
-        this.numItemsSkipped = 0;
-        this.numFilesProvided = 0;
-        for (const file of this.#options.include) {
-            yield file;
-        }
-        for (const file of this.#getFilesIn('')) {
-            if (this.#options.include.includes(file)) {
-                continue;
-            }
-            this.numFilesProvided++;
-            yield file;
-        }
-    }
-
-    /**
-     * Recursively provides relative paths of the files to check the syntax of, starting from a given relative directory.
-     * @param {string} relativeDirectory The directory to start from, relative to the directory specified in the options
-     * @returns {Generator<string, void, undefined>}
-     */
-    *#getFilesIn(relativeDirectory) {
-        const absoluteDirectory = relativeDirectory === '' ? this.#options.directory : path__default.join(this.#options.directory, relativeDirectory);
-        const files = [];
-        const subDirectories = [];
-        fs__default.readdirSync(absoluteDirectory).forEach((item) => {
-            if (item === '.' || item === '..') {
-                return;
-            }
-            const relativeItem = relativeDirectory === '' ? item : path__default.join(relativeDirectory, item);
-            if (this.#isRelativePathExcluded(relativeItem)) {
-                this.numItemsSkipped++;
-                return;
-            }
-            const absoluteItem = path__default.join(absoluteDirectory, item);
-            if (fs__default.lstatSync(absoluteItem).isDirectory()) {
-                subDirectories.push(relativeItem);
-            } else if (item.match(/.\.php$/i)) {
-                files.push(relativeItem);
-            }
-        });
-        for (const file of files) {
-            yield file;
-        }
-        for (const subDirectory of subDirectories) {
-            for (const item of this.#getFilesIn(subDirectory)) {
-                yield item;
-            }
-        }
-    }
-
-    /**
-     * Checks if a given relative path should be skipped because it is excluded.
-     * @param {string} relativePath
-     * @returns {boolean}
-     */
-    #isRelativePathExcluded(relativePath) {
-        if (this.#options.exclude.includes(relativePath)) {
-            return true;
-        }
-        for (const exclude of this.#options.exclude) {
-            if (relativePath.startsWith(`${exclude}${path__default.sep}`)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    return false;
+  }
 }
 
 const __dirname$1 = fileURLToPath(new URL('.', import.meta.url));
@@ -29880,11 +29882,11 @@ const shescape = new Shescape();
  * @returns {string}
  */
 function escapeArgument(arg) {
-    const check = process.platform === 'win32' ? arg.replaceAll(path__default.sep, '/') : arg;
-    if (!/[^a-zA-Z0-9_\-/.]/.test(check)) {
-        return arg;
-    }
-    return shescape.escape(arg);
+  const check = process.platform === 'win32' ? arg.replaceAll(path__default.sep, '/') : arg;
+  if (!/[^a-zA-Z0-9_\-/.]/.test(check)) {
+    return arg;
+  }
+  return shescape.escape(arg);
 }
 
 /**
@@ -29893,28 +29895,26 @@ function escapeArgument(arg) {
  * @returns {PHPVersion} The version of PHP installed on the system
  */
 function getPHPVersion() {
-    const stdout = child_process.execSync('php -n -r "echo PHP_VERSION_ID;"',
-        {
-            encoding: 'utf-8',
-            stdio: [
-                // stdin
-                'ignore',
-                // stdout
-                'pipe',
-                // stderr
-                'ignore',
-            ],
-        }
-    );
-    const match = /^(?<major>[1-9][0-9]*)(?<minor>[0-9][0-9])(?<patch>[0-9][0-9])$/.exec(stdout.trim());
-    if (!match) {
-        throw new Error(`Failed to parse version ${stdout}` + (stderr ? `\n${stderr}` : ''));
-    }
-    return {
-        major: parseInt(match.groups.major, 10),
-        minor: parseInt(match.groups.minor, 10),
-        patch: parseInt(match.groups.patch, 10),
-    }
+  const stdout = child_process.execSync('php -n -r "echo PHP_VERSION_ID;"', {
+    encoding: 'utf-8',
+    stdio: [
+      // stdin
+      'ignore',
+      // stdout
+      'pipe',
+      // stderr
+      'ignore',
+    ],
+  });
+  const match = /^(?<major>[1-9][0-9]*)(?<minor>[0-9][0-9])(?<patch>[0-9][0-9])$/.exec(stdout.trim());
+  if (!match) {
+    throw new Error(`Failed to parse version ${stdout}` + (stderr ? `\n${stderr}` : ''));
+  }
+  return {
+    major: parseInt(match.groups.major, 10),
+    minor: parseInt(match.groups.minor, 10),
+    patch: parseInt(match.groups.patch, 10),
+  };
 }
 
 /**
@@ -29923,59 +29923,61 @@ function getPHPVersion() {
  * @returns {number} The maximum length of command lines that can be executed on the system
  */
 function getMaxCommandLineLength(debug) {
-    if (process.platform === 'win32') {
-        /** @see https://learn.microsoft.com/en-us/troubleshoot/windows-client/shell-experience/command-line-string-limitation */
-        const result = 8100;
-        if (debug) {
-            process.stdout.write(`Maximum length of command lines: ${result} (fixed for Windows)\n`);
-        }
-        return result;
-    }
-    try {
-        const execOptions =             {
-            encoding: 'utf-8',
-            stdio: [
-                // stdin
-                'ignore',
-                // stout
-                'pipe',
-                // stderr
-                'ignore',
-            ],
-        };
-        /** @see https://www.in-ulm.de/~mascheck/various/argmax/ */
-        let raw;
-        raw = child_process.execSync('getconf ARG_MAX', execOptions).trim();
-        const argMax = parseInt(raw, 10);
-        if (!argMax || argMax < 1) {
-            throw new Error(`Failed to parse the output of getconf ARG_MAX (${raw})`);
-        }
-        raw = child_process.execSync('env', execOptions).trim();
-        const envSize = raw.length;
-        const numEnvVars = raw.split('\n').length;
-        const calculated = argMax - envSize - numEnvVars * 4 - 2048;
-        if (calculated < 1) {
-            throw new Error(`ARG_MAX seems too low`);
-        }
-        if (debug) {
-            process.stdout.write(`Calculated length of command lines: ${calculated} (${argMax} - ${envSize} - ${numEnvVars} * 4 - 2048)\n`);
-        }
-        const cap = 120000;
-        const result = calculated < cap ? calculated : cap;
-        if (debug) {
-            process.stdout.write(`Maximum length of command lines: min(${calculated}, ${cap}) = ${result}\n`);
-        }
-        return result;
-    } catch (e) {
-        if (debug) {
-            process.stderr.write(`Failed to detect the maximum lenght of command lines: ${e.message}\n`);
-        }
-    }
-    /** @see https://www.gnu.org/software/automake/manual/html_node/Length-Limitations.html */
+  if (process.platform === 'win32') {
+    /** @see https://learn.microsoft.com/en-us/troubleshoot/windows-client/shell-experience/command-line-string-limitation */
+    const result = 8100;
     if (debug) {
-        process.stdout.write(`Maximum length of command lines: 4096 (minimum as per POSIX specs)`);
+      process.stdout.write(`Maximum length of command lines: ${result} (fixed for Windows)\n`);
     }
-    return 4096;
+    return result;
+  }
+  try {
+    const execOptions = {
+      encoding: 'utf-8',
+      stdio: [
+        // stdin
+        'ignore',
+        // stout
+        'pipe',
+        // stderr
+        'ignore',
+      ],
+    };
+    /** @see https://www.in-ulm.de/~mascheck/various/argmax/ */
+    let raw;
+    raw = child_process.execSync('getconf ARG_MAX', execOptions).trim();
+    const argMax = parseInt(raw, 10);
+    if (!argMax || argMax < 1) {
+      throw new Error(`Failed to parse the output of getconf ARG_MAX (${raw})`);
+    }
+    raw = child_process.execSync('env', execOptions).trim();
+    const envSize = raw.length;
+    const numEnvVars = raw.split('\n').length;
+    const calculated = argMax - envSize - numEnvVars * 4 - 2048;
+    if (calculated < 1) {
+      throw new Error(`ARG_MAX seems too low`);
+    }
+    if (debug) {
+      process.stdout.write(
+        `Calculated length of command lines: ${calculated} (${argMax} - ${envSize} - ${numEnvVars} * 4 - 2048)\n`,
+      );
+    }
+    const cap = 120000;
+    const result = calculated < cap ? calculated : cap;
+    if (debug) {
+      process.stdout.write(`Maximum length of command lines: min(${calculated}, ${cap}) = ${result}\n`);
+    }
+    return result;
+  } catch (e) {
+    if (debug) {
+      process.stderr.write(`Failed to detect the maximum lenght of command lines: ${e.message}\n`);
+    }
+  }
+  /** @see https://www.gnu.org/software/automake/manual/html_node/Length-Limitations.html */
+  if (debug) {
+    process.stdout.write(`Maximum length of command lines: 4096 (minimum as per POSIX specs)`);
+  }
+  return 4096;
 }
 
 /**
@@ -29987,26 +29989,29 @@ function getMaxCommandLineLength(debug) {
  * @returns {Generator<string, void, undefined>} A generator that yields command lines
  */
 function* generateCommandLinesForCheckWithL(filesProvider, options, phpVersion, multipleFiles) {
-    const maxCommandLineLength = multipleFiles ? getMaxCommandLineLength(options.debug) : 0;
-    const prefix = 'php -n -d display_errors=stderr -d error_reporting=-1' + (phpVersion.major >= 8 ? ' -d opcache.jit=disable' : '') + ' -l';
-    let commandLine = '';
-    for (const file of filesProvider.getFiles()) {
-        const fileArgument = ' ' + escapeArgument(file);
-        if (commandLine === '') {
-            commandLine = prefix + fileArgument;
-        } else {
-            const newCommandLine = commandLine + fileArgument;
-            if (multipleFiles && newCommandLine.length < maxCommandLineLength) {
-                commandLine = newCommandLine;
-            } else {
-                yield commandLine;
-                commandLine = prefix + fileArgument;
-            }
-        }
-    }
-    if (commandLine !== '') {
+  const maxCommandLineLength = multipleFiles ? getMaxCommandLineLength(options.debug) : 0;
+  const prefix =
+    'php -n -d display_errors=stderr -d error_reporting=-1' +
+    (phpVersion.major >= 8 ? ' -d opcache.jit=disable' : '') +
+    ' -l';
+  let commandLine = '';
+  for (const file of filesProvider.getFiles()) {
+    const fileArgument = ' ' + escapeArgument(file);
+    if (commandLine === '') {
+      commandLine = prefix + fileArgument;
+    } else {
+      const newCommandLine = commandLine + fileArgument;
+      if (multipleFiles && newCommandLine.length < maxCommandLineLength) {
+        commandLine = newCommandLine;
+      } else {
         yield commandLine;
+        commandLine = prefix + fileArgument;
+      }
     }
+  }
+  if (commandLine !== '') {
+    yield commandLine;
+  }
 }
 
 /**
@@ -30017,23 +30022,25 @@ function* generateCommandLinesForCheckWithL(filesProvider, options, phpVersion, 
  * @returns {Promise<CheckResults>}
  */
 async function checkWithL(options, phpVersion, multipleFiles) {
+  if (options.debug) {
+    if (multipleFiles) {
+      process.stdout.write('Using php -l to check the files (many at once)\n');
+    } else {
+      process.stdout.write('Using php -l to check the files (one by one)\n');
+    }
+  }
+  const filesProvider = new FilesProvider(options);
+  let result = CheckResult.OK;
+  for (const commandLine of generateCommandLinesForCheckWithL(filesProvider, options, phpVersion, multipleFiles)) {
     if (options.debug) {
-        if (multipleFiles) {
-            process.stdout.write('Using php -l to check the files (many at once)\n');
-        } else {
-            process.stdout.write('Using php -l to check the files (one by one)\n');
-        }
+      process.stdout.write(`Executing: ${commandLine}\n`);
     }
-    const filesProvider = new FilesProvider(options);
-    let result = CheckResult.OK;
-    for (const commandLine of generateCommandLinesForCheckWithL(filesProvider, options, phpVersion, multipleFiles)) {
-        if (options.debug) {
-            process.stdout.write(`Executing: ${commandLine}\n`);
-        }
-        result = Math.max(result, await checkWithLDo(options, commandLine));
-    }
-    process.stdout.write(`\nNumber of files processed: ${filesProvider.numFilesProvided}\nNumber of items skipped: ${filesProvider.numItemsSkipped}\n`);
-    return result;
+    result = Math.max(result, await checkWithLDo(options, commandLine));
+  }
+  process.stdout.write(
+    `\nNumber of files processed: ${filesProvider.numFilesProvided}\nNumber of items skipped: ${filesProvider.numItemsSkipped}\n`,
+  );
+  return result;
 }
 
 /**
@@ -30042,38 +30049,34 @@ async function checkWithL(options, phpVersion, multipleFiles) {
  * @param {string} commandLine The command line to execute to check the files
  * @returns {Promise<CheckResults>}
  */
-function checkWithLDo(options, commandLine)
-{
-    const child = child_process.exec(
-        commandLine,
-        {
-            cwd: options.directory,
-            stdio: [
-                // stdin
-                'ignore',
-                // stdout
-                'ignore',
-                // stderr
-                'pipe',
-            ],
-        }
-    );
-    let warningsDetected = false;
-    child.stderr.on('data', (data) => {
-        warningsDetected = true;
-        process.stderr.write(data.toString());
+function checkWithLDo(options, commandLine) {
+  const child = child_process.exec(commandLine, {
+    cwd: options.directory,
+    stdio: [
+      // stdin
+      'ignore',
+      // stdout
+      'ignore',
+      // stderr
+      'pipe',
+    ],
+  });
+  let warningsDetected = false;
+  child.stderr.on('data', (data) => {
+    warningsDetected = true;
+    process.stderr.write(data.toString());
+  });
+  return new Promise((resolve, _reject) => {
+    child.on('close', (code) => {
+      if (code !== 0) {
+        resolve(CheckResult.Errors);
+      } else if (warningsDetected) {
+        resolve(CheckResult.Warnings);
+      } else {
+        resolve(CheckResult.OK);
+      }
     });
-    return new Promise((resolve, _reject) => {
-        child.on('close', (code) => {
-            if (code !== 0) {
-                resolve(CheckResult.Errors);
-            } else if(warningsDetected) {
-                resolve(CheckResult.Warnings);
-            } else {
-                resolve(CheckResult.OK);
-            }
-        });
-    });
+  });
 }
 
 /**
@@ -30083,52 +30086,44 @@ function checkWithLDo(options, commandLine)
  * @returns {Promise<CheckResults>}
  */
 function checkWithOpCache(options, phpVersion) {
-    if (options.debug) {
-        process.stdout.write('Using opcache to check the files\n');
-    }
-    const args = [
-        '-d', 'display_errors=stderr',
-        '-d', 'error_reporting=-1',
-        '-d', 'opcache.enable_cli=1',
-    ];
-    if (phpVersion.major >= 8) {
-        args.push('-d');
-        args.push('opcache.jit=disable');
-    }
-    args.push(path__default.join(__dirname$1, 'checker.php'));
-    options.include.forEach((f) => args.push(`+${f}`));
-    options.exclude.forEach((f) => args.push(`-${f}`));
-    const child = child_process.spawn(
-        'php',
-        args,
-        {
-            cwd: options.directory,
-            stdio: [
-                // stdin
-                'ignore',
-                // stdout
-                'inherit',
-                // stderr
-                'pipe',
-            ],
-        }
-    );
-    let warningsDetected = false;
-    child.stderr.on('data', (data) => {
-        warningsDetected = true;
-        process.stderr.write(data.toString());
+  if (options.debug) {
+    process.stdout.write('Using opcache to check the files\n');
+  }
+  const args = ['-d', 'display_errors=stderr', '-d', 'error_reporting=-1', '-d', 'opcache.enable_cli=1'];
+  if (phpVersion.major >= 8) {
+    args.push('-d');
+    args.push('opcache.jit=disable');
+  }
+  args.push(path__default.join(__dirname$1, 'checker.php'));
+  options.include.forEach((f) => args.push(`+${f}`));
+  options.exclude.forEach((f) => args.push(`-${f}`));
+  const child = child_process.spawn('php', args, {
+    cwd: options.directory,
+    stdio: [
+      // stdin
+      'ignore',
+      // stdout
+      'inherit',
+      // stderr
+      'pipe',
+    ],
+  });
+  let warningsDetected = false;
+  child.stderr.on('data', (data) => {
+    warningsDetected = true;
+    process.stderr.write(data.toString());
+  });
+  return new Promise((resolve, _reject) => {
+    child.on('close', (code) => {
+      if (code !== 0) {
+        resolve(CheckResult.Errors);
+      } else if (warningsDetected) {
+        resolve(CheckResult.Warnings);
+      } else {
+        resolve(CheckResult.OK);
+      }
     });
-    return new Promise((resolve, _reject) => {
-        child.on('close', (code) => {
-            if (code !== 0) {
-                resolve(CheckResult.Errors);
-            } else if(warningsDetected) {
-                resolve(CheckResult.Warnings);
-            } else {
-                resolve(CheckResult.OK);
-            }
-        });
-    });
+  });
 }
 
 /**
@@ -30136,44 +30131,42 @@ function checkWithOpCache(options, phpVersion) {
  * @param {Options} options The options to use for checking the files
  * @throws {Error} When the version of PHP cannot be detected or parsed
  */
-async function check(options)
-{
-    const phpVersion = getPHPVersion();
-    process.stdout.write(`Checking files with PHP ${phpVersion.major}.${phpVersion.minor}.${phpVersion.patch}\n`);
-    let result;
-    if (phpVersion.major > 8 || phpVersion.major === 8 && phpVersion.minor >= 3) {
-        result = await checkWithL(options, phpVersion, true);
-    } else if (options.supportDuplicatedNames) {
-        result = await checkWithL(options, phpVersion, false);
-    } else {
-        result = await checkWithOpCache(options, phpVersion);
-    }
-    switch (result) {
-        case CheckResult.OK:
-            process.stdout.write('No errors found.\n');
-            process.exit(0);
-            break;
-        case CheckResult.Warnings:
-            process.stdout.write('Warnings found!\n');
-            process.exit(options.failOnWarnings ? 1 : 0);
-        case CheckResult.Errors:
-        default:
-            process.stdout.write('Errors found!\n');
-            process.exit(1);
-    }
+async function check(options) {
+  const phpVersion = getPHPVersion();
+  process.stdout.write(`Checking files with PHP ${phpVersion.major}.${phpVersion.minor}.${phpVersion.patch}\n`);
+  let result;
+  if (phpVersion.major > 8 || (phpVersion.major === 8 && phpVersion.minor >= 3)) {
+    result = await checkWithL(options, phpVersion, true);
+  } else if (options.supportDuplicatedNames) {
+    result = await checkWithL(options, phpVersion, false);
+  } else {
+    result = await checkWithOpCache(options, phpVersion);
+  }
+  switch (result) {
+    case CheckResult.OK:
+      process.stdout.write('No errors found.\n');
+      process.exit(0);
+      break;
+    case CheckResult.Warnings:
+      process.stdout.write('Warnings found!\n');
+      process.exit(options.failOnWarnings ? 1 : 0);
+    case CheckResult.Errors:
+    default:
+      process.stdout.write('Errors found!\n');
+      process.exit(1);
+  }
 }
 
 /**
  * @returns {Promise<void>}
  */
-async function run()
-{
-    try {
-        const options = resolveArguments();
-        await check(options);
-    } catch (error) {
-        setFailed(error.message);
-    }
+async function run() {
+  try {
+    const options = resolveArguments();
+    await check(options);
+  } catch (error) {
+    setFailed(error.message);
+  }
 }
 
 run();

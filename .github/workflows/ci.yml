@@ -11,26 +11,20 @@ on:
   workflow_dispatch:
 
 jobs:
-
   check-dist:
     name: Check dist folder
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Install NodeJS
+      - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v6
-      -
-        run: npm ci
-      -
-        name: Build dist
+      - run: npm ci
+      - name: Build dist
         run: npm run-script build
-      -
-        name: Check changes
+      - name: Check changes
         run: |
           if ! git diff --quiet; then
             echo "::error::Changes detected in dist folder. Please run 'npm run build' and commit the changes before pushing"
@@ -38,66 +32,73 @@ jobs:
             exit 1
           fi
 
-  check-php-syntax:
+  check-php:
     strategy:
       fail-fast: false
       matrix:
         php-version:
-          - '5.3'
-          - '8.5'
-    name: Check PHP ${{ matrix.php-version }} syntax
+          - "5.3"
+          - "8.5"
+    name: Check PHP ${{ matrix.php-version }}
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Install PHP ${{ matrix.php-version }}
+      - name: Install PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           extensions: opcache
           coverage: none
           tools: none
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v6
-      -
-        name: Check syntax
+      - name: Check syntax
         uses: ./
         with:
           directory: src
           fail-on-warnings: true
 
+  check-js:
+    name: Check JS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+      - name: Checkout
+        uses: actions/checkout@v6
+      - run: npm ci
+      - name: Check syntax
+        run: npm run-script lint:check
+
   test-repo:
     name: Tests in repo
     needs:
       - check-dist
-      - check-php-syntax
+      - check-php
+      - check-js
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v6
-      -
-        name: Setup PHP 5.3
+      - name: Setup PHP 5.3
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '5.3'
+          php-version: "5.3"
           extensions: opcache
           coverage: none
           tools: none
-      -
-        name: Test (should fail)
+      - name: Test (should fail)
         id: fail01
         continue-on-error: true
         uses: ./
         with:
           directory: test/common
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail01.outcome == 'success'
         run: exit 1
-      -
-        name: Test (should fail)
+      - name: Test (should fail)
         id: fail02
         continue-on-error: true
         uses: ./
@@ -109,12 +110,10 @@ jobs:
             bar
             broken.php
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail02.outcome == 'success'
         run: exit 1
-      -
-        name: Test (should fail on PHP < 8.3)
+      - name: Test (should fail on PHP < 8.3)
         id: fail03
         continue-on-error: true
         uses: ./
@@ -123,12 +122,10 @@ jobs:
           exclude: |
             broken.php
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail03.outcome == 'success'
         run: exit 1
-      -
-        name: Test (should pass)
+      - name: Test (should pass)
         uses: ./
         with:
           directory: test/common
@@ -136,8 +133,7 @@ jobs:
             bar/foo.php
             broken.php
           debug: true
-      -
-        name: Test (should pass)
+      - name: Test (should pass)
         uses: ./
         with:
           directory: test/common
@@ -145,21 +141,18 @@ jobs:
             broken.php
           support-duplicated-names: true
           debug: true
-      -
-        name: Test with warnings (should pass)
+      - name: Test with warnings (should pass)
         uses: ./
         with:
           directory: test/warnings/php5.3
           debug: true
-      -
-        name: Test with warnings (should pass)
+      - name: Test with warnings (should pass)
         uses: ./
         with:
           directory: test/warnings/php5.3
           fail-on-warnings: false
           debug: true
-      -
-        name: Test with warnings (should fail)
+      - name: Test with warnings (should fail)
         id: fail-warn-1
         continue-on-error: true
         uses: ./
@@ -167,31 +160,26 @@ jobs:
           directory: test/warnings/php5.3
           fail-on-warnings: true
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail-warn-1.outcome == 'success'
         run: exit 1
-      -
-        name: Setup PHP 8.3
+      - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: "8.3"
           coverage: none
           tools: none
-      -
-        name: Test (should fail)
+      - name: Test (should fail)
         id: fail11
         continue-on-error: true
         uses: ./
         with:
           directory: test/common
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail11.outcome == 'success'
         run: exit 1
-      -
-        name: Test (should fail)
+      - name: Test (should fail)
         id: fail12
         continue-on-error: true
         uses: ./
@@ -203,40 +191,34 @@ jobs:
             bar
             broken.php
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail12.outcome == 'success'
         run: exit 1
-      -
-        name: Test (should pass)
+      - name: Test (should pass)
         uses: ./
         with:
           directory: test/common
           exclude: |
             broken.php
           debug: true
-      -
-        name: Setup PHP 8.4
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: "8.4"
           coverage: none
           tools: none
-      -
-        name: Test with warnings (should pass)
+      - name: Test with warnings (should pass)
         uses: ./
         with:
           directory: test/warnings/php8.4
           debug: true
-      -
-        name: Test with warnings (should pass)
+      - name: Test with warnings (should pass)
         uses: ./
         with:
           directory: test/warnings/php8.4
           fail-on-warnings: false
           debug: true
-      -
-        name: Test with warnings (should fail)
+      - name: Test with warnings (should fail)
         id: fail-warn-2
         continue-on-error: true
         uses: ./
@@ -244,8 +226,7 @@ jobs:
           directory: test/warnings/php8.4
           fail-on-warnings: true
           debug: true
-      -
-        name: Stop if execution was successful
+      - name: Stop if execution was successful
         if: steps.fail-warn-2.outcome == 'success'
         run: exit 1
 
@@ -253,31 +234,28 @@ jobs:
     name: Tests with dist
     needs:
       - check-dist
-      - check-php-syntax
+      - check-php
+      - check-js
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Setup PHP 8.4
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: "8.4"
           coverage: none
           tools: none
-      -
-        name: Download action
+      - name: Download action
         run: |
           curl -sSLf -o- \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             'https://api.github.com/repos/${{ github.repository }}/tarball/${{ github.ref }}' \
             | tar -xz --strip-components=1
-      -
-        name: Clone a fairly big PHP project
+      - name: Clone a fairly big PHP project
         run: |
           mkdir -p /tmp/big-project
           curl -sSLf -o- https://codeload.github.com/concretecms/concretecms/tar.gz/refs/tags/9.3.7 | tar -xz -C /tmp/big-project --strip-components=1
-      -
-        name: Test (should pass)
+      - name: Test (should pass)
         uses: ./
         with:
           directory: /tmp/big-project

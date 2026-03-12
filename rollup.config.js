@@ -14,10 +14,7 @@ const config = {
     validate: true,
     esModule: true,
   },
-  plugins: [
-    nodeResolve({preferBuiltins: true}),
-    commonjs(),
-  ],
+  plugins: [nodeResolve({preferBuiltins: true}), commonjs()],
   context: undefined,
   moduleContext: undefined,
   onwarn(warning, handler) {
