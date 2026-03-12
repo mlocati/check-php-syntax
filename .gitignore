@@ -1,4 +1,2 @@
 /.vscode/launch.json
-/dist/sourcemap-register.js
-/dist/index.js.map
 /node_modules/

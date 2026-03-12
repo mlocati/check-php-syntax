@@ -1,48 +1,53 @@
-const path = require('node:path');
-const child_process = require('node:child_process');
-const { FilesProvider} = require('./files-provider.js');
-const { Shescape } = require('shescape');
+import path from 'node:path';
+import child_process from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { Shescape } from 'shescape';
+import FilesProvider from './files-provider.js';
 
-const CHECKRESULT_OK = 1;
-const CHECKRESULT_WARNINGS = 2;
-const CHECKRESULT_ERRORS = 3;
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
+/** @import { Options, PHPVersion } from './types.js' */
+
+const CheckResult = Object.freeze({
+  OK: 1,
+  Warnings: 2,
+  Errors: 3,
+});
 
 /**
- * @typedef {object} PHPVersion
- * @property {number} major
- * @property {number} minor
- * @property {number} patch
+ * @typedef {CheckResult[keyof typeof CheckResult]} CheckResults
  */
+
+const CHECKRESULT_ERRORS = 3;
 
 const shescape = new Shescape();
 
 /**
+ * Escapes an argument for use in a command line.
  * @param {string} arg
- *
  * @returns {string}
  */
-function escapeArgument(arg)
-{
+function escapeArgument(arg) {
     const check = process.platform === 'win32' ? arg.replaceAll(path.sep, '/') : arg;
     if (!/[^a-zA-Z0-9_\-/.]/.test(check)) {
         return arg;
     }
-
     return shescape.escape(arg);
 }
 
 /**
- * @returns {PHPVersion}
+ * Detects the version of PHP installed on the system.
+ * @throws {Error} When the version of PHP cannot be detected or parsed
+ * @returns {PHPVersion} The version of PHP installed on the system
  */
-function getPHPVersion()
-{
+function getPHPVersion() {
     const stdout = child_process.execSync('php -n -r "echo PHP_VERSION_ID;"',
         {
             encoding: 'utf-8',
             stdio: [
                 // stdin
                 'ignore',
-                // stout
+                // stdout
                 'pipe',
                 // stderr
                 'ignore',
@@ -61,12 +66,11 @@ function getPHPVersion()
 }
 
 /**
- * @param {bool} debug
- *
- * @returns {number}
+ * Returns the maximum length of command lines that can be executed on the system.
+ * @param {boolean} debug Whether to output debug messages
+ * @returns {number} The maximum length of command lines that can be executed on the system
  */
-function getMaxCommandLineLength(debug)
-{
+function getMaxCommandLineLength(debug) {
     if (process.platform === 'win32') {
         /** @see https://learn.microsoft.com/en-us/troubleshoot/windows-client/shell-experience/command-line-string-limitation */
         const result = 8100;
@@ -123,27 +127,28 @@ function getMaxCommandLineLength(debug)
 }
 
 /**
- * @param {FilesProvider} filesProvider
- * @param {Options} options
- * @param {PHPVersion} phpVersion
- * @param {bool} multipleFiles
+ * Generates command lines to check the syntax of the files provided by a files provider with "php -l".
+ * @param {FilesProvider} filesProvider The files provider to get the files to check
+ * @param {Options} options The options to use for the command lines
+ * @param {PHPVersion} phpVersion The PHP version to use for the command lines
+ * @param {boolean} multipleFiles Whether to generate command lines for multiple files at once
+ * @returns {Generator<string, void, undefined>} A generator that yields command lines
  */
-function* generateCommandLines(filesProvider, options, phpVersion, multipleFiles)
-{
+function* generateCommandLinesForCheckWithL(filesProvider, options, phpVersion, multipleFiles) {
     const maxCommandLineLength = multipleFiles ? getMaxCommandLineLength(options.debug) : 0;
     const prefix = 'php -n -d display_errors=stderr -d error_reporting=-1' + (phpVersion.major >= 8 ? ' -d opcache.jit=disable' : '') + ' -l';
     let commandLine = '';
     for (const file of filesProvider.getFiles()) {
-        const chunk = ' ' + escapeArgument(file);
+        const fileArgument = ' ' + escapeArgument(file);
         if (commandLine === '') {
-            commandLine = prefix + chunk;
+            commandLine = prefix + fileArgument;
         } else {
-            const newCommandLine = commandLine + chunk;
-            if (newCommandLine.length < maxCommandLineLength) {
+            const newCommandLine = commandLine + fileArgument;
+            if (multipleFiles && newCommandLine.length < maxCommandLineLength) {
                 commandLine = newCommandLine;
             } else {
                 yield commandLine;
-                commandLine = prefix + chunk;
+                commandLine = prefix + fileArgument;
             }
         }
     }
@@ -153,14 +158,13 @@ function* generateCommandLines(filesProvider, options, phpVersion, multipleFiles
 }
 
 /**
- * @param {Options} options
- * @param {PHPVersion} phpVersion
- * @param {bool} multipleFiles
- *
- * @returns {Promise<int>}
+ * Checks the syntax of the files provided by a files provider with "php -l".
+ * @param {Options} options The options to use for checking the files
+ * @param {PHPVersion} phpVersion The version of PHP to use for checking the files
+ * @param {boolean} multipleFiles Whether to generate command lines for multiple files at once
+ * @returns {Promise<CheckResults>}
  */
-async function checkWithL(options, phpVersion, multipleFiles)
-{
+async function checkWithL(options, phpVersion, multipleFiles) {
     if (options.debug) {
         if (multipleFiles) {
             process.stdout.write('Using php -l to check the files (many at once)\n')
@@ -169,23 +173,22 @@ async function checkWithL(options, phpVersion, multipleFiles)
         }
     }
     const filesProvider = new FilesProvider(options);
-    let result = CHECKRESULT_OK;
-    for (const commandLine of generateCommandLines(filesProvider, options, phpVersion, multipleFiles)) {
+    let result = CheckResult.OK;
+    for (const commandLine of generateCommandLinesForCheckWithL(filesProvider, options, phpVersion, multipleFiles)) {
         if (options.debug) {
             process.stdout.write(`Executing: ${commandLine}\n`)
         }
         result = Math.max(result, await checkWithLDo(options, commandLine));
     }
     process.stdout.write(`\nNumber of files processed: ${filesProvider.numFilesProvided}\nNumber of items skipped: ${filesProvider.numItemsSkipped}\n`)
-
     return result;
 }
 
 /**
- * @param {Options} options
- * @param {string} commandLine
- *
- * @returns {Promise<int>}
+ * Checks the syntax of the files provided by a files provider with a given "php -l" command line.
+ * @param {Options} options The options to use for checking the files
+ * @param {string} commandLine The command line to execute to check the files
+ * @returns {Promise<CheckResults>}
  */
 function checkWithLDo(options, commandLine)
 {
@@ -196,7 +199,7 @@ function checkWithLDo(options, commandLine)
             stdio: [
                 // stdin
                 'ignore',
-                // stout
+                // stdout
                 'ignore',
                 // stderr
                 'pipe',
@@ -208,28 +211,26 @@ function checkWithLDo(options, commandLine)
         warningsDetected = true;
         process.stderr.write(data.toString());
     });
-
     return new Promise((resolve, _reject) => {
         child.on('close', (code) => {
             if (code !== 0) {
-                resolve(CHECKRESULT_ERRORS);
+                resolve(CheckResult.Errors);
             } else if(warningsDetected) {
-                resolve(CHECKRESULT_WARNINGS);
+                resolve(CheckResult.Warnings);
             } else {
-                resolve(CHECKRESULT_OK);
+                resolve(CheckResult.OK);
             }
         });
     });
 }
 
 /**
- * @param {Options} options
- * @param {PHPVersion} phpVersion
- *
- * @returns {Promise<int>}
+ * Checks the syntax of the files provided by a files provider with OPCache.
+ * @param {Options} options The options to use for checking the files
+ * @param {PHPVersion} phpVersion The version of PHP to use for checking the files
+ * @returns {Promise<CheckResults>}
  */
-function checkWithOpCache(options, phpVersion)
-{
+function checkWithOpCache(options, phpVersion) {
     if (options.debug) {
         process.stdout.write('Using opcache to check the files\n')
     }
@@ -245,7 +246,6 @@ function checkWithOpCache(options, phpVersion)
     args.push(path.join(__dirname, 'checker.php'));
     options.include.forEach((f) => args.push(`+${f}`));
     options.exclude.forEach((f) => args.push(`-${f}`));
-
     const child = child_process.spawn(
         'php',
         args,
@@ -254,7 +254,7 @@ function checkWithOpCache(options, phpVersion)
             stdio: [
                 // stdin
                 'ignore',
-                // stout
+                // stdout
                 'inherit',
                 // stderr
                 'pipe',
@@ -266,25 +266,25 @@ function checkWithOpCache(options, phpVersion)
         warningsDetected = true;
         process.stderr.write(data.toString());
     });
-
     return new Promise((resolve, _reject) => {
         child.on('close', (code) => {
             if (code !== 0) {
-                resolve(CHECKRESULT_ERRORS);
+                resolve(CheckResult.Errors);
             } else if(warningsDetected) {
-                resolve(CHECKRESULT_WARNINGS);
+                resolve(CheckResult.Warnings);
             } else {
-                resolve(CHECKRESULT_OK);
+                resolve(CheckResult.OK);
             }
         });
     });
 }
 
-
 /**
- * @param {Options} options
+ * Check the syntax of PHP files in a directory with the options provided.
+ * @param {Options} options The options to use for checking the files
+ * @throws {Error} When the version of PHP cannot be detected or parsed
  */
-async function check(options)
+export default async function check(options)
 {
     const phpVersion = getPHPVersion();
     process.stdout.write(`Checking files with PHP ${phpVersion.major}.${phpVersion.minor}.${phpVersion.patch}\n`);
@@ -297,18 +297,16 @@ async function check(options)
         result = await checkWithOpCache(options, phpVersion);
     }
     switch (result) {
-        case CHECKRESULT_OK:
+        case CheckResult.OK:
             process.stdout.write('No errors found.\n');
             process.exit(0);
             break;
-        case CHECKRESULT_WARNINGS:
+        case CheckResult.Warnings:
             process.stdout.write('Warnings found!\n');
             process.exit(options.failOnWarnings ? 1 : 0);
-        case CHECKRESULT_ERRORS:
+        case CheckResult.Errors:
         default:
             process.stdout.write('Errors found!\n');
             process.exit(1);
     }
 }
-
-exports.check = check;

@@ -1,18 +1,18 @@
-const core = require('@actions/core');
-const optionsResolver = require('./options-resolver.js');
-const checker = require('./checker.js');
+import { setFailed } from '@actions/core';
+import resolveArguments from './options-resolver.js';
+import check from './checker.js';
 
 /**
- * @returns {Promise}
+ * @returns {Promise<void>}
  */
-function run()
+async function run()
 {
     try {
-        const options = optionsResolver.resolveArguments();
-        return checker.check(options);
+        const options = resolveArguments();
+        await check(options);
     } catch (error) {
-        core.setFailed(error.message);
+        setFailed(error.message);
     }
 }
 
-return run();
+run();
