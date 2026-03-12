@@ -2,21 +2,13 @@ name: Continuous Integration
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/build.yml"
-      - "src/**"
-      - "package-lock.json"
-      - "package.json"
   push:
     branches:
-      - main
+      - dev
+      - v*
     tags-ignore:
       - "**"
-    paths:
-      - ".github/workflows/build.yml"
-      - "src/**"
-      - "package-lock.json"
-      - "package.json"
+  workflow_dispatch:
 
 jobs:
 

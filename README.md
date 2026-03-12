@@ -1,3 +1,6 @@
+[![Continuous Integration for dev](https://img.shields.io/github/actions/workflow/status/mlocati/check-php-syntax/ci.yml?label=dev)](https://github.com/mlocati/check-php-syntax/actions/workflows/ci.yml)
+[![Continuous Integration for v1](https://img.shields.io/github/actions/workflow/status/mlocati/check-php-syntax/ci.yml?label=v1&branch=v1)](https://github.com/mlocati/check-php-syntax/actions/workflows/ci.yml)
+
 # GitHub Action to check PHP Syntax
 
 You may need to check if PHP files have a correct syntax.
